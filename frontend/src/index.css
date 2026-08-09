@@ -224,7 +224,6 @@ input, select, textarea { font-family: inherit; }
 .page-content {
   flex: 1;
   padding: 28px 32px;
-  margin-top: var(--topbar-height);
   animation: fade-in 0.35s ease;
 }
 
@@ -340,10 +339,8 @@ input, select, textarea { font-family: inherit; }
 
 /* ─── Topbar ────────────────────────────────────────────────────────── */
 .topbar {
-  position: fixed;
+  position: sticky;
   top: 0;
-  left: var(--sidebar-width);
-  right: 0;
   height: var(--topbar-height);
   background: rgba(255,255,255,0.70);
   backdrop-filter: blur(24px);
@@ -405,10 +402,8 @@ input, select, textarea { font-family: inherit; }
 
 /* ─── Alert Banner ──────────────────────────────────────────────────── */
 .alert-banner {
-  position: fixed;
+  position: sticky;
   top: var(--topbar-height);
-  left: var(--sidebar-width);
-  right: 0;
   z-index: 80;
   padding: 12px 32px;
   background: linear-gradient(90deg, rgba(239,68,68,0.08), rgba(239,68,68,0.04));

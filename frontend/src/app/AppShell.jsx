@@ -40,10 +40,7 @@ function ShellWithAlerts({ children, pathname }) {
             onDismiss={() => setBannerDismissed(true)}
           />
         )}
-        <main
-          className="page-content"
-          style={{ marginTop: showBanner ? 'calc(var(--topbar-height) + 46px)' : undefined }}
-        >
+        <main className="page-content">
           {children}
         </main>
       </div>
