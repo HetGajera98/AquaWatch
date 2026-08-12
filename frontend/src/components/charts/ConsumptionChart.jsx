@@ -1,5 +1,6 @@
 'use client';
 
+import { useMemo } from 'react';
 import {
   ComposedChart, Area, Bar, XAxis, YAxis, CartesianGrid,
   Tooltip, ResponsiveContainer, Legend,
@@ -35,11 +36,13 @@ const CustomTooltip = ({ active, payload, label }) => {
 };
 
 export function ConsumptionChart({ consumptionData, rainfallData, height = 200 }) {
-  const merged = consumptionData.map((c, i) => ({
-    time: c.time,
-    consumption: c.value,
-    rainfall: rainfallData[i]?.value ?? 0,
-  }));
+  const merged = useMemo(() => {
+    return consumptionData.map((c, i) => ({
+      time: c.time,
+      consumption: c.value,
+      rainfall: rainfallData[i]?.value ?? 0,
+    }));
+  }, [consumptionData, rainfallData]);
 
   return (
     <ResponsiveContainer width="100%" height={height}>

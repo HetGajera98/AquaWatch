@@ -61,6 +61,10 @@ class LeakRequest(BaseModel):
         0.0, description="Scheduled/typical flow for this sensor at this time of day"
     )
     hour_of_day: int = Field(..., ge=0, le=23)
+    tank_level_pct: float = Field(
+        50.0, ge=0, le=100,
+        description="Current tank fill level %. Near-full tanks make any flow highly suspicious."
+    )
 
     model_config = ConfigDict(json_schema_extra={
             "example": {
@@ -71,6 +75,7 @@ class LeakRequest(BaseModel):
                 "pct_time_flowing": 0.97,
                 "expected_flow_lpm": 1.0,
                 "hour_of_day": 2,
+                "tank_level_pct": 95.0,
             }
         })
 

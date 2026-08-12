@@ -70,15 +70,15 @@ export default function AlertsPage() {
       </div>
 
       {/* Summary chips */}
-      <div style={{ display: 'flex', gap: 12, marginBottom: 20, flexWrap: 'wrap' }}>
+      <div className="stagger-in" style={{ display: 'flex', gap: 14, marginBottom: 24, flexWrap: 'wrap' }}>
         {['high', 'medium', 'low'].map(s => {
           const count = alerts.filter(a => a.severity === s).length;
           return (
-            <GlassCard key={s} style={{ padding: '10px 16px', display: 'flex', alignItems: 'center', gap: 10 }}>
-              <AlertTriangle size={14} color={s === 'high' ? 'var(--high)' : s === 'medium' ? 'var(--medium)' : 'var(--low)'} />
+            <GlassCard key={s} style={{ padding: '12px 20px', display: 'flex', alignItems: 'center', gap: 12, flex: '1 1 180px' }} glow={s === 'high' ? 'red' : null}>
+              <AlertTriangle size={18} color={s === 'high' ? 'var(--high)' : s === 'medium' ? 'var(--medium)' : 'var(--low)'} />
               <div>
-                <div style={{ fontSize: '1.1rem', fontWeight: 800, color: 'var(--text-primary)' }}>{count}</div>
-                <div style={{ fontSize: '0.68rem', color: 'var(--text-muted)', textTransform: 'capitalize' }}>{s} severity</div>
+                <div style={{ fontSize: '1.25rem', fontWeight: 800, color: 'var(--text-primary)', lineHeight: 1 }}>{count}</div>
+                <div style={{ fontSize: '0.72rem', color: 'var(--text-muted)', textTransform: 'capitalize', fontWeight: 600, marginTop: 3 }}>{s} severity</div>
               </div>
             </GlassCard>
           );
@@ -87,7 +87,7 @@ export default function AlertsPage() {
 
       {/* Filters */}
       <div className="filter-row">
-        <span style={{ fontSize: '0.78rem', fontWeight: 600, color: 'var(--text-muted)', marginRight: 4 }}>Severity:</span>
+        <span style={{ fontSize: '0.78rem', fontWeight: 700, color: 'var(--text-muted)', marginRight: 4 }}>Severity:</span>
         {['all', 'high', 'medium', 'low'].map(s => (
           <button
             key={s}
@@ -98,7 +98,7 @@ export default function AlertsPage() {
           </button>
         ))}
         <span style={{ margin: '0 8px', color: 'var(--border)' }}>|</span>
-        <span style={{ fontSize: '0.78rem', fontWeight: 600, color: 'var(--text-muted)', marginRight: 4 }}>Type:</span>
+        <span style={{ fontSize: '0.78rem', fontWeight: 700, color: 'var(--text-muted)', marginRight: 4 }}>Type:</span>
         {['all', 'leak', 'water_stress', 'shortage'].map(t => (
           <button
             key={t}
@@ -112,20 +112,23 @@ export default function AlertsPage() {
 
       {/* Alert list */}
       {isLoading ? (
-        <div style={{ padding: '40px', textAlign: 'center', color: 'var(--text-muted)' }}>Loading alerts…</div>
+        <div style={{ padding: '60px', textAlign: 'center', color: 'var(--text-muted)' }}>
+          <span className="spinner spinner-dark" style={{ width: 24, height: 24, marginBottom: 12 }} />
+          <div>Fetching live alerts…</div>
+        </div>
       ) : filtered.length === 0 ? (
         <div className="empty-state">
-          <CheckCircle2 size={40} />
-          <div className="empty-state-title">No alerts match your filters</div>
-          <div className="empty-state-sub">Adjust the filters above to see more alerts</div>
+          <CheckCircle2 size={44} style={{ color: 'var(--low)' }} />
+          <div className="empty-state-title">No alerts match your criteria</div>
+          <div className="empty-state-sub">Adjust the filters above to inspect all historical alert logs</div>
         </div>
       ) : (
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+        <div className="stagger-in" style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
           {filtered.map(alert => (
             <div
               key={alert.id}
               className={`alert-item ${alert.severity}`}
-              style={{ opacity: alert.acknowledged ? 0.6 : 1 }}
+              style={{ opacity: alert.acknowledged ? 0.65 : 1 }}
             >
               <div className={`alert-icon-wrap ${alert.severity}`}>
                 {typeIcon(alert.type)}
@@ -135,22 +138,22 @@ export default function AlertsPage() {
                   <span className="alert-zone">{alert.zoneName}</span>
                   <StressChip severity={alert.severity} size="sm" />
                   <span style={{
-                    fontSize: '0.70rem', fontWeight: 600,
-                    padding: '2px 7px', borderRadius: 5,
-                    background: alert.type === 'leak' ? 'rgba(139,92,246,0.10)' : 'rgba(14,165,233,0.10)',
-                    color: alert.type === 'leak' ? '#7C3AED' : 'var(--primary)',
+                    fontSize: '0.72rem', fontWeight: 700,
+                    padding: '3px 10px', borderRadius: 100,
+                    background: alert.type === 'leak' ? 'rgba(139,92,246,0.12)' : 'rgba(14,165,233,0.12)',
+                    color: alert.type === 'leak' ? '#6D28D9' : 'var(--primary-dark)',
                     border: '1px solid',
-                    borderColor: alert.type === 'leak' ? 'rgba(139,92,246,0.20)' : 'rgba(14,165,233,0.20)',
+                    borderColor: alert.type === 'leak' ? 'rgba(139,92,246,0.25)' : 'rgba(14,165,233,0.25)',
                   }}>
                     {typeLabel(alert.type)}
                   </span>
                   {alert.acknowledged && (
-                    <span className="badge neutral"><CheckCircle2 size={10} /> Acknowledged</span>
+                    <span className="badge neutral"><CheckCircle2 size={11} /> Acknowledged</span>
                   )}
                 </div>
                 <p className="alert-message">{alert.message}</p>
                 <div className="alert-footer">
-                  <Clock size={10} />
+                  <Clock size={12} />
                   {formatTime(alert.createdAt)} · {timeAgo(alert.createdAt)}
                   {alert.sensorId && (
                     <>
@@ -159,25 +162,23 @@ export default function AlertsPage() {
                     </>
                   )}
                   {alert.confidence && (
-                    <span>· Confidence: {(alert.confidence * 100).toFixed(0)}%</span>
+                    <span>· AI Confidence: {(alert.confidence * 100).toFixed(0)}%</span>
                   )}
                 </div>
               </div>
-              <div style={{ display: 'flex', flexDirection: 'column', gap: 6, alignItems: 'flex-end' }}>
+              <div className="alert-actions">
                 <button
                   className="btn btn-ghost btn-sm"
                   onClick={() => router.push(`/zones/${alert.zoneId}`)}
-                  style={{ fontSize: '0.72rem' }}
                 >
                   View Zone →
                 </button>
                 {!alert.acknowledged && (
                   <button
-                    className="btn btn-ghost btn-sm"
+                    className="btn btn-primary btn-sm"
                     onClick={() => acknowledge(alert.id)}
-                    style={{ fontSize: '0.72rem' }}
                   >
-                    <CheckCircle2 size={11} /> Ack
+                    <CheckCircle2 size={13} /> Ack
                   </button>
                 )}
               </div>

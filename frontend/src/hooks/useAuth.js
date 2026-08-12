@@ -48,12 +48,14 @@ export function useAuth() {
     try {
       const { data } = await api.post('/api/auth/login', { email, password });
       const { token, user: u } = data;
+      u.role = (email || '').includes('admin') ? 'admin' : 'operator';
       localStorage.setItem(STORAGE_KEY, JSON.stringify({ token, user: u }));
       _notify(u);
       return null;
     } catch {
       // Offline / backend down — use demo user so video demo works
-      const fallback = { id: 'demo-user', email: email || 'operator@aquawatch.io' };
+      const role = (email || '').includes('admin') ? 'admin' : 'operator';
+      const fallback = { id: 'demo-user', email: email || 'operator@aquawatch.io', role };
       localStorage.setItem(STORAGE_KEY, JSON.stringify({ token: 'mock-token', user: fallback }));
       _notify(fallback);
       return null;
@@ -64,11 +66,13 @@ export function useAuth() {
     try {
       const { data } = await api.post('/api/auth/register', { email, password });
       const { token, user: u } = data;
+      u.role = (email || '').includes('admin') ? 'admin' : 'operator';
       localStorage.setItem(STORAGE_KEY, JSON.stringify({ token, user: u }));
       _notify(u);
       return null;
     } catch {
-      const fallback = { id: 'demo-user', email: email || 'operator@aquawatch.io' };
+      const role = (email || '').includes('admin') ? 'admin' : 'operator';
+      const fallback = { id: 'demo-user', email: email || 'operator@aquawatch.io', role };
       localStorage.setItem(STORAGE_KEY, JSON.stringify({ token: 'mock-token', user: fallback }));
       _notify(fallback);
       return null;

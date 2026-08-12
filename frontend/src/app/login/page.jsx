@@ -6,6 +6,7 @@ import { Droplets, Eye, EyeOff } from 'lucide-react';
 import { useAuth } from '@/hooks/useAuth';
 import { Button } from '@/components/ui/Button';
 import { GlassCard } from '@/components/ui/GlassCard';
+import { Logo } from '@/components/ui/Logo';
 
 export default function LoginPage() {
   const [tab, setTab]             = useState('login');
@@ -38,8 +39,8 @@ export default function LoginPage() {
       <GlassCard className="login-card animate-slide-up">
         {/* Logo */}
         <div className="login-logo">
-          <div className="login-logo-icon">
-            <Droplets size={24} color="#fff" />
+          <div className="login-logo-icon" style={{ background: 'transparent', padding: 0 }}>
+            <Logo size={42} />
           </div>
           <span className="login-logo-text">AquaWatch</span>
         </div>
@@ -137,8 +138,18 @@ export default function LoginPage() {
           color: 'var(--text-secondary)',
         }}>
           <strong style={{ color: 'var(--primary)' }}>Demo credentials</strong><br />
-          Email: <code style={{ color: 'var(--text-primary)' }}>operator@aquawatch.io</code><br />
-          Password: <code style={{ color: 'var(--text-primary)' }}>demo1234</code>
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10, marginTop: 8 }}>
+            <div>
+              <span style={{ fontWeight: 700, color: 'var(--text-primary)' }}>Operator</span><br />
+              Email: <code>operator@aquawatch.io</code><br />
+              Password: <code>demo1234</code>
+            </div>
+            <div>
+              <span style={{ fontWeight: 700, color: 'var(--text-primary)' }}>Admin</span><br />
+              Email: <code>admin@aquawatch.io</code><br />
+              Password: <code>demo1234</code>
+            </div>
+          </div>
         </div>
       </GlassCard>
     </div>

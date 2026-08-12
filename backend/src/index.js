@@ -9,6 +9,7 @@ const alertRoutes  = require('./routes/alerts');
 const sensorRoutes = require('./routes/sensors');
 const pumpRoutes   = require('./routes/pumps');
 const predictRoutes = require('./routes/predict');
+const deviceRoutes = require('./routes/devices');
 
 // Background jobs
 const { startBlynkPoller }    = require('./jobs/blynkPoller');
@@ -33,7 +34,8 @@ app.use('/api/zones',    zoneRoutes);
 app.use('/api/alerts',   alertRoutes);
 app.use('/api/sensors',  sensorRoutes);
 app.use('/api/tanks',    pumpRoutes);
-app.use('/api/predict',  predictRoutes);   // /api/predict/shortage  /leak  /pump-control
+app.use('/api/predict',  predictRoutes);
+app.use('/api/devices',  deviceRoutes);  // live Blynk hardware readings
 
 // ── Health check ──────────────────────────────────────────────────
 app.get('/api/health', (req, res) => {

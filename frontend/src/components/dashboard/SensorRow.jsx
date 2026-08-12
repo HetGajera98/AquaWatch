@@ -1,21 +1,24 @@
-import { Droplets, Activity, ToggleLeft } from 'lucide-react';
+import { Droplets, Activity, Gauge } from 'lucide-react';
 import { StressChip } from '../ui/StressChip';
 
+// Map every backend sensor.type to a UI config
+// Backend sends lowercase: 'tank_level', 'flow_rate'
 const typeConfig = {
-  flow:         { label: 'Flow Rate',    Icon: Activity,    cls: 'flow' },
-  tank_level:   { label: 'Tank Level',   Icon: Droplets,    cls: 'tank_level' },
-  float_switch: { label: 'Float Switch', Icon: ToggleLeft,  cls: 'float_switch' },
+  tank_level: { label: 'Tank Level',  Icon: Droplets,  cls: 'tank_level' },
+  flow_rate:  { label: 'Flow Rate',   Icon: Activity,  cls: 'flow' },
+  // legacy / fallback
+  flow:       { label: 'Flow Rate',   Icon: Activity,  cls: 'flow' },
 };
 
+const DEFAULT_CFG = { label: 'Sensor', Icon: Gauge, cls: 'tank_level' };
+
 function formatValue(sensor) {
-  if (sensor.type === 'float_switch') {
-    return sensor.liveValue === 1 ? 'FULL' : 'NORMAL';
-  }
-  return sensor.liveValue.toFixed(sensor.type === 'flow' ? 2 : 0);
+  const val = sensor.liveValue ?? 0;
+  return val.toFixed(sensor.type === 'flow_rate' || sensor.type === 'flow' ? 2 : 0);
 }
 
 export function SensorRow({ sensor }) {
-  const cfg = typeConfig[sensor.type];
+  const cfg = typeConfig[sensor.type] ?? DEFAULT_CFG;
   const Icon = cfg.Icon;
 
   return (

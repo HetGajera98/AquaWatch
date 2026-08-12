@@ -12,7 +12,7 @@ const { getZonePredictions } = require('../lib/aiProxy');
 const CYCLE_INTERVAL_MS = parseInt(process.env.AI_CYCLE_INTERVAL_MS) || 60_000; // 1 min
 const BLYNK_TOKEN       = process.env.BLYNK_AUTH_TOKEN;
 const BLYNK_BASE        = 'https://blynk.cloud/external/api';
-const BLYNK_RELAY_PIN   = process.env.BLYNK_RELAY_PIN || 'V0';
+const BLYNK_RELAY_PIN   = process.env.BLYNK_RELAY_PIN || 'V3'; // V3 = pump relay
 
 /** Send relay command to Blynk Cloud */
 async function setRelay(value) {
@@ -51,15 +51,54 @@ async function runPredictionCycle() {
 
       const tankLevel  = await latestValue(tankSensor?.id);
       const flowValue  = await latestValue(flowSensor?.id);
-      const floatValue = await latestValue(floatSensor?.id);
+
+      // Fetch last 10 min of flow readings for real std/max computation
+      const recentFlowReadings = flowSensor ? (await prisma.sensorReading.findMany({
+        where:   { sensorId: flowSensor.id, recordedAt: { gte: new Date(Date.now() - 10 * 60 * 1000) } },
+        orderBy: { recordedAt: 'asc' },
+        select:  { value: true },
+      })).map(r => r.value) : [];
+      // Fetch last 7 days of tank level readings for trend computation
+      const tankLevelReadings = tankSensor ? await prisma.sensorReading.findMany({
+        where:   { sensorId: tankSensor.id, recordedAt: { gte: new Date(Date.now() - 7 * 86400000) } },
+        orderBy: { recordedAt: 'asc' },
+        select:  { value: true },
+      }) : [];
+      const tankLevelHistory = tankLevelReadings.map(r => r.value);
+
+      // Fetch 7-day consumption averages from flow sensor
+      const consumptionHistory = [];
+      if (flowSensor) {
+        for (let d = 6; d >= 0; d--) {
+          const start = new Date(Date.now() - d * 86400000);
+          start.setHours(0, 0, 0, 0);
+          const end = new Date(start); end.setHours(23, 59, 59, 999);
+          const agg = await prisma.sensorReading.aggregate({
+            where: { sensorId: flowSensor.id, recordedAt: { gte: start, lte: end } },
+            _avg: { value: true }, _count: { value: true },
+          });
+          if (agg._count.value > 0)
+            consumptionHistory.push(Math.round((agg._avg.value ?? 0) * 60 * 24));
+        }
+      }
+
+      const consumptionAvg = consumptionHistory.length > 0
+        ? consumptionHistory.reduce((a, b) => a + b, 0) / consumptionHistory.length
+        : 1800;
+
+      const rainfallForecastMm = zone.weather[0]?.rainfallMm ?? 0;
 
       let predictions;
       try {
         predictions = await getZonePredictions({
           zone,
-          tank:        { levelPct: tankLevel },
-          flowSensor:  flowSensor ? { id: flowSensor.id, value: flowValue } : null,
-          consumptionAvg: 1800,
+          tank:               { levelPct: tankLevel },
+          flowSensor:         flowSensor ? { id: flowSensor.id, value: flowValue } : null,
+          consumptionAvg,
+          tankLevelHistory,
+          consumptionHistory,
+          rainfallForecastMm,
+          recentFlowReadings,
         });
       } catch (aiErr) {
         console.warn(`[AI Scheduler] Zone ${zone.name}: AI unavailable — ${aiErr.message}`);

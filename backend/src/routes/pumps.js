@@ -21,7 +21,7 @@ router.post('/:tankId/pump', requireAuth, async (req, res) => {
     // Actuate the physical relay via Blynk Cloud
     const blynkToken = process.env.BLYNK_AUTH_TOKEN;
     if (blynkToken) {
-      const vPin = process.env.BLYNK_RELAY_PIN || 'v0';
+      const vPin = process.env.BLYNK_RELAY_PIN || 'V3';
       const blynkValue = action === 'on' ? 1 : 0;
       try {
         await axios.get(`https://blynk.cloud/external/api/update?token=${blynkToken}&${vPin}=${blynkValue}`);

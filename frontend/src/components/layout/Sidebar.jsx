@@ -3,82 +3,114 @@
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import {
-  LayoutDashboard, Map, Bell, Settings, Droplets, LogOut,
+  LayoutDashboard, Map, Bell, Settings, Droplets, LogOut, X, Cpu, Users,
 } from 'lucide-react';
 import { useAuth } from '@/hooks/useAuth';
-import { mockAlerts } from '@/lib/mockData';
+import { useAlerts } from '@/hooks/useAlerts';
+import { Logo } from '@/components/ui/Logo';
 
-export function Sidebar() {
+export function Sidebar({ isOpen, onClose }) {
   const pathname = usePathname();
   const { logout, user } = useAuth();
-  const unacknowledgedHigh = mockAlerts.filter(a => a.severity === 'high' && !a.acknowledged).length;
+  const { alerts } = useAlerts();
+  const unreadCount = alerts.filter(a => a.severity === 'high' && !a.acknowledged).length;
 
   const navItems = [
-    { to: '/dashboard', icon: LayoutDashboard, label: 'Dashboard' },
-    { to: '/zones', icon: Map, label: 'Zones' },
-    { to: '/alerts', icon: Bell, label: 'Alerts', badge: unacknowledgedHigh || undefined },
+    { to: '/dashboard', Icon: LayoutDashboard, label: 'Dashboard' },
+    ...(user?.role === 'admin' ? [{ to: '/operators', Icon: Users, label: 'Operators' }] : []),
+    { to: '/zones',     Icon: Map,             label: user?.role === 'admin' ? 'Zones' : 'Motor Stations' },
+    { to: '/alerts',    Icon: Bell,            label: 'Alerts',  badge: unreadCount || undefined },
+    ...(user?.role !== 'admin' ? [{ to: '/devices', Icon: Cpu, label: 'Devices' }] : []),
   ];
 
-  return (
-    <aside className="sidebar">
-      {/* Logo */}
-      <div className="sidebar-logo">
-        <div className="sidebar-logo-icon">
-          <Droplets size={20} color="#fff" />
-        </div>
-        <span className="sidebar-logo-text">AquaWatch</span>
-      </div>
+  const isActive = (to) =>
+    pathname ? (pathname === to || pathname.startsWith(`${to}/`)) : false;
 
-      {/* Nav */}
-      <nav className="sidebar-nav">
-        <span className="nav-section-label">Monitor</span>
-        {navItems.map(({ to, icon: Icon, label, badge }) => {
-          const isActive = pathname ? (pathname === to || pathname.startsWith(`${to}/`)) : false;
-          return (
+  const initial = user?.email ? user.email.charAt(0).toUpperCase() : 'O';
+  const email   = user?.email ?? 'operator@aquawatch.io';
+
+  return (
+    <>
+      {/* Backdrop — only rendered when open, tapping closes drawer */}
+      {isOpen && (
+        <div
+          className="sidebar-backdrop"
+          onClick={onClose}
+          aria-hidden="true"
+        />
+      )}
+
+      <aside className={`sidebar${isOpen ? ' open' : ''}`} aria-label="Sidebar navigation">
+        {/* ── Header ── */}
+        <div className="sidebar-logo">
+          <div className="sidebar-logo-icon" style={{ background: 'transparent', padding: 0 }}>
+            <Logo size={40} />
+          </div>
+          <span className="sidebar-logo-text">AquaWatch</span>
+          {/* Close button only visible on tablet/mobile */}
+          <button className="sidebar-close-btn" onClick={onClose} aria-label="Close menu">
+            <X size={18} />
+          </button>
+        </div>
+
+        {/* ── Nav ── */}
+        <nav className="sidebar-nav">
+          <span className="nav-section-label">Monitor</span>
+
+          {navItems.map(({ to, Icon, label, badge }) => (
             <Link
               key={to}
               href={to}
-              className={`nav-item ${isActive ? 'active' : ''}`}
+              className={`nav-item${isActive(to) ? ' active' : ''}`}
+              onClick={onClose}
+              aria-current={isActive(to) ? 'page' : undefined}
             >
-              <Icon size={16} className="nav-item-icon" />
+              <Icon size={18} className="nav-item-icon" />
               {label}
               {badge ? <span className="nav-badge">{badge}</span> : null}
             </Link>
-          );
-        })}
+          ))}
 
-        <span className="nav-section-label" style={{ marginTop: 12 }}>System</span>
-        <Link
-          href="/settings"
-          className={`nav-item ${pathname === '/settings' ? 'active' : ''}`}
-        >
-          <Settings size={16} className="nav-item-icon" />
-          Settings
-        </Link>
-      </nav>
+          <span className="nav-section-label" style={{ marginTop: 14 }}>System</span>
 
-      {/* Footer */}
-      <div className="sidebar-footer">
-        <div
-          className="nav-item"
-          style={{ marginBottom: 4, cursor: 'default' }}
-        >
-          <div className="avatar" style={{ width: 22, height: 22, fontSize: '0.6rem' }}>
-            {user?.email ? user.email.charAt(0).toUpperCase() : 'O'}
+          <Link
+            href="/settings"
+            className={`nav-item${isActive('/settings') ? ' active' : ''}`}
+            onClick={onClose}
+            aria-current={isActive('/settings') ? 'page' : undefined}
+          >
+            <Settings size={18} className="nav-item-icon" />
+            Settings
+          </Link>
+        </nav>
+
+        {/* ── Footer ── */}
+        <div className="sidebar-footer">
+          {/* User row */}
+          <div className="nav-item" style={{ cursor: 'default', pointerEvents: 'none' }}>
+            <div className="avatar" style={{ width: 26, height: 26, fontSize: '0.65rem', flexShrink: 0 }}>
+              {initial}
+            </div>
+            <span style={{
+              fontSize: '0.80rem', color: 'var(--text-secondary)',
+              overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
+              flex: 1, minWidth: 0,
+            }}>
+              {email}
+            </span>
           </div>
-          <span style={{ fontSize: '0.78rem', color: 'var(--text-secondary)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-            {user?.email ?? 'operator@aquawatch.io'}
-          </span>
+
+          {/* Sign out */}
+          <button
+            className="nav-item"
+            onClick={() => { onClose(); logout(); }}
+            style={{ width: '100%', textAlign: 'left' }}
+          >
+            <LogOut size={18} className="nav-item-icon" />
+            Sign out
+          </button>
         </div>
-        <button
-          className="nav-item"
-          onClick={logout}
-          style={{ width: '100%', border: 'none', background: 'none', textAlign: 'left' }}
-        >
-          <LogOut size={16} className="nav-item-icon" />
-          Sign out
-        </button>
-      </div>
-    </aside>
+      </aside>
+    </>
   );
 }

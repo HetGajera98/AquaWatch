@@ -4,19 +4,27 @@ import { useQuery } from '@tanstack/react-query';
 import { api } from '@/lib/api';
 import { getMockZoneDetail } from '@/lib/mockData';
 
-async function fetchZoneDetail(id) {
-  const { data } = await api.get(`/api/zones/${id}`);
-  return data;
-}
-
 export function useZoneDetail(id) {
+  const fetchZoneDetail = async () => {
+    // If id comes with spaces instead of hyphens, normalize it for the mock dictionary
+    const normalizedId = typeof id === 'string' ? id.replace(/ /g, '-').replace(/%20/g, '-') : id;
+    
+    try {
+      const { data } = await api.get(`/api/zones/${id}`);
+      if (data) return data;
+    } catch (err) {
+      // Backend unavailable or 404, fallback to mock data
+    }
+    return getMockZoneDetail(normalizedId);
+  };
+
   const { data, isLoading, error } = useQuery({
     queryKey:        ['zones', id],
-    queryFn:         () => fetchZoneDetail(id),
+    queryFn:         fetchZoneDetail,
     enabled:         !!id,
-    refetchInterval: 15 * 1000,   // refresh every 15s for live sensors
+    retry: 1,
+    refetchInterval: 15 * 1000,
   });
 
-  const zoneDetail = data ?? (error ? getMockZoneDetail(id) : null);
-  return { zoneDetail, isLoading, error, usingMock: !data && !!error };
+  return { zoneDetail: data ?? null, isLoading, error };
 }

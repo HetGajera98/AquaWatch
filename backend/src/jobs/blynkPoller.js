@@ -1,17 +1,18 @@
-// src/jobs/blynkPoller.js
-// Polls Blynk Cloud REST API for the latest sensor readings from the ESP32-S3 node
+// Polls Blynk Cloud REST API for the latest sensor readings from the NodeMCU node
 // and persists them into sensor_readings.
 //
-// Token: set in BLYNK_AUTH_TOKEN (from Member 4)
-// Template: TMPL33NzVpmvP — "smart water system"
-// Pin mapping (confirm with Member 4's ESP32 firmware):
-//   V1 = Tank Level (%)
-//   V2 = Flow Rate (L/min)
-//   V3 = Float Switch (0/1)
-//   V4 = Relay (output, not polled)
+// Token: set in BLYNK_AUTH_TOKEN
+// Template: TMPL3j0FxQEvH — "smart water management"
+//
+// Confirmed NodeMCU virtual pin mapping:
+//   V0 = Water Level (%)          — tank fill percentage
+//   V1 = Water Distance (cm)      — JSN-SR04T ultrasonic raw reading
+//   V2 = Flow Rate (L/min)        — YF-S201 flow sensor
+//   V3 = Pump Control (0/1)       — relay output (backend writes, NodeMCU reads)
+//   V4 = Total Water (L)          — cumulative litre counter on NodeMCU
 //
 // If device is offline Blynk returns 400 — the poller logs a warning and
-// skips that cycle. It resumes automatically when the ESP32 comes back online.
+// skips that cycle. It resumes automatically when the NodeMCU comes back online.
 
 const axios  = require('axios');
 const prisma = require('../lib/prisma');
@@ -29,7 +30,7 @@ function distanceToLevelPct(distanceCm) {
   return parseFloat(Math.min(100, (waterDepth / TANK_HEIGHT_CM) * 100).toFixed(2));
 }
 
-/** Check if the ESP32 is connected to Blynk */
+/** Check if the NodeMCU is connected to Blynk */
 async function isDeviceOnline() {
   try {
     const resp = await axios.get(
@@ -64,14 +65,14 @@ async function pollOnce() {
   const online = await isDeviceOnline();
   if (!online) {
     if (!_deviceWasOffline) {
-      console.warn('[Blynk] ⚠️  ESP32 device is offline — polling paused until reconnected');
+      console.warn('[Blynk] ⚠️  NodeMCU device is offline — polling paused until reconnected');
       _deviceWasOffline = true;
     }
     return;
   }
 
   if (_deviceWasOffline) {
-    console.log('[Blynk] ✅ ESP32 device came back online — resuming polling');
+    console.log('[Blynk] ✅ NodeMCU device came back online — resuming polling');
     _deviceWasOffline = false;
   }
 
@@ -134,8 +135,8 @@ function startBlynkPoller() {
     return null;
   }
 
-  console.log(`[Blynk] ✅ Token loaded (TMPL33NzVpmvP — smart water system)`);
-  console.log(`[Blynk] Polling every ${POLL_INTERVAL_MS / 1000}s — waiting for ESP32 to come online...`);
+  console.log(`[Blynk] ✅ Token loaded (TMPL3j0FxQEvH — smart water management)`);
+  console.log(`[Blynk] Polling every ${POLL_INTERVAL_MS / 1000}s — waiting for NodeMCU to come online...`);
   pollOnce();
   return setInterval(pollOnce, POLL_INTERVAL_MS);
 }

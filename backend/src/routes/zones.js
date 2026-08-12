@@ -23,7 +23,10 @@ router.get('/', requireAuth, async (req, res) => {
     const zones = await prisma.zone.findMany({
       include: {
         tanks: {
-          include: { sensors: true },
+          include: {
+            sensors: true,
+            pumpActions: { orderBy: { triggeredAt: 'desc' }, take: 1 },
+          },
         },
         alerts: {
           where:   { resolved: false },
@@ -41,14 +44,8 @@ router.get('/', requireAuth, async (req, res) => {
 
       const tankSensor   = zone.tanks[0]?.sensors.find(s => s.type === 'TANK_LEVEL');
       const flowSensor   = zone.tanks[0]?.sensors.find(s => s.type === 'FLOW_RATE');
-      const floatSensor  = zone.tanks[0]?.sensors.find(s => s.type === 'FLOAT_SWITCH');
-
-      const tankLevel  = tankSensor  ? (latest[tankSensor.id]?.value  ?? 0) : 0;
-      const flowRate   = flowSensor  ? (latest[flowSensor.id]?.value  ?? 0) : 0;
-      const floatVal   = floatSensor ? (latest[floatSensor.id]?.value ?? 0) : 0;
-
-      const floatSwitch = floatVal >= 1 ? 'full' : tankLevel < 20 ? 'empty' : 'normal';
-      const stressScore = tankLevel < 25 ? 'high' : tankLevel < 55 ? 'medium' : 'low';
+      const tankLevel    = tankSensor ? (latest[tankSensor.id]?.value ?? 0) : 0;
+      const flowRate     = flowSensor ? (latest[flowSensor.id]?.value ?? 0) : 0;
 
       // Get tank level history (last 48 readings)
       const levelHistory = tankSensor
@@ -59,18 +56,40 @@ router.get('/', requireAuth, async (req, res) => {
           })).map(r => ({ time: r.recordedAt, value: r.value }))
         : [];
 
+      // ── Leak probability & Stress Score from AI ────────────
+      let aiPrediction = null;
+      try {
+        aiPrediction = await getZonePredictions({
+          zone,
+          tank:               { levelPct: tankLevel },
+          flowSensor:         flowSensor ? { id: flowSensor.id, value: flowRate } : null,
+          consumptionAvg:     1800,
+          tankLevelHistory:   levelHistory.map(r => r.value),
+          consumptionHistory: [],
+          rainfallForecastMm: 0,
+        });
+      } catch (e) {
+        console.warn(`[Dashboard] AI fetch failed for ${zone.id}:`, e.message);
+      }
+
+      // Use AI values if available, else fallback
+      const leakProbability = aiPrediction?.leak?.leak_probability ?? 0.05;
+      const stressScore = aiPrediction?.shortage?.severity ?? (tankLevel < 30 ? 'high' : tankLevel < 60 ? 'medium' : 'low');
+
+      // Real pump status from latest pump action
+      const latestPump = zone.tanks[0]?.pumpActions?.[0] ?? null;
+      const pumpStatus = latestPump?.state === 'ON' ? 'on' : 'off';
+
       return {
         id:               zone.id,
         name:             zone.name,
         city:             zone.name.split(' ')[0],
-        population:       100000,
         tankLevel,
         tankLevelHistory: levelHistory,
         flowRate,
-        floatSwitch,
-        leakProbability:  0.1,          // updated from AI on detail page
+        leakProbability,
         stressScore,
-        pumpStatus:       'off',         // updated from pump actions below
+        pumpStatus,
       };
     }));
 
@@ -108,13 +127,9 @@ router.get('/:id', requireAuth, async (req, res) => {
     const sensors = (tank?.sensors ?? []).map(s => ({
       id:        s.id,
       type:      s.type.toLowerCase(),
-      label:     s.type === 'TANK_LEVEL' ? 'Tank Level Sensor'
-               : s.type === 'FLOW_RATE'  ? 'Flow Rate Meter'
-               : 'Float Switch',
+      label:     s.type === 'TANK_LEVEL' ? 'Tank Level Sensor' : 'Flow Rate Meter',
       liveValue: latest[s.id]?.value ?? 0,
-      unit:      s.type === 'TANK_LEVEL' ? '%'
-               : s.type === 'FLOW_RATE'  ? 'L/min'
-               : 'boolean',
+      unit:      s.type === 'TANK_LEVEL' ? '%' : 'L/min',
       status:    'ok',
       blynkPin:  s.blynkVirtualPin,
     }));
@@ -170,11 +185,21 @@ router.get('/:id', requireAuth, async (req, res) => {
     // AI predictions
     let aiPrediction = null;
     try {
+      // Build real history arrays for trend computation
+      const tankLevelValues = levelHistory.map(r => r.value);
+      const consumptionValues = consumptionHistory.map(d => d.consumption);
+      const rainfallForecastMm = zone.weather[0]?.rainfallMm ?? 0;
+
       const pred = await getZonePredictions({
         zone,
-        tank:    { levelPct: tankLevel },
-        flowSensor: flowSensor ? { id: flowSensor.id, value: flowValue } : null,
-        consumptionAvg: 1800,
+        tank:               { levelPct: tankLevel },
+        flowSensor:         flowSensor ? { id: flowSensor.id, value: flowValue } : null,
+        consumptionAvg:     consumptionValues.length > 0
+          ? consumptionValues.reduce((a, b) => a + b, 0) / consumptionValues.length
+          : 1800,
+        tankLevelHistory:   tankLevelValues,
+        consumptionHistory: consumptionValues,
+        rainfallForecastMm,
       });
       aiPrediction = {
         shortage: pred.shortage ? {
@@ -198,9 +223,7 @@ router.get('/:id', requireAuth, async (req, res) => {
       console.warn('AI service unavailable:', e.message);
     }
 
-    const floatSensor = tank?.sensors.find(s => s.type === 'FLOAT_SWITCH');
-    const floatVal    = floatSensor ? (latest[floatSensor.id]?.value ?? 0) : 0;
-    const stressScore = tankLevel < 25 ? 'high' : tankLevel < 55 ? 'medium' : 'low';
+    const stressScore = tankLevel < 30 ? 'high' : tankLevel < 60 ? 'medium' : 'low';
 
     return res.json({
       id:               zone.id,
@@ -222,7 +245,6 @@ router.get('/:id', requireAuth, async (req, res) => {
       consumptionHistory,
       rainfallHistory,
       aiPrediction,
-      floatSwitch: floatVal >= 1 ? 'full' : tankLevel < 20 ? 'empty' : 'normal',
     });
   } catch (err) {
     console.error(`GET /zones/${req.params.id} error:`, err);

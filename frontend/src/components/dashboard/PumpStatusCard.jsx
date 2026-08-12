@@ -1,15 +1,15 @@
 'use client';
 
-import { useState } from 'react';
-import { Zap, RotateCcw } from 'lucide-react';
+import { Zap, RotateCcw, AlertCircle } from 'lucide-react';
 import { GlassCard } from '@/components/ui/GlassCard';
 import { Button } from '@/components/ui/Button';
+import { usePumpControl } from '@/hooks/usePumpControl';
 
 const reasonLabel = {
-  tank_full: 'Tank full',
-  tank_low: 'Tank low',
-  tank_critical: 'Tank critical',
-  leak_detected: 'Leak detected',
+  tank_full:       'Tank full',
+  tank_low:        'Tank low',
+  tank_critical:   'Tank critical',
+  leak_detected:   'Leak detected',
   manual_override: 'Manual override',
 };
 
@@ -20,21 +20,18 @@ function formatTime(iso) {
 }
 
 export function PumpStatusCard({ pump, tankName }) {
-  const [status, setStatus] = useState(pump.status);
-  const [lastAction, setLastAction] = useState(pump.lastAction);
+  const tankId = pump?.id?.replace('pump-', '') ?? '';
 
-  const toggle = () => {
-    const newAction = status === 'on' ? 'off' : 'on';
-    setStatus(newAction);
-    setLastAction({
-      id: `manual-${Date.now()}`,
-      pumpId: pump.id,
-      action: newAction,
-      triggeredBy: 'manual',
-      reason: 'manual_override',
-      createdAt: new Date().toISOString(),
-    });
-  };
+  const {
+    status,
+    lastAction: liveLastAction,
+    loading,
+    error,
+    togglePump,
+  } = usePumpControl(tankId, pump.status);
+
+  // Use live response from backend if available, otherwise initial prop
+  const lastAction = liveLastAction ?? pump.lastAction;
 
   return (
     <GlassCard className="stat-card">
@@ -70,21 +67,37 @@ export function PumpStatusCard({ pump, tankName }) {
         </div>
         <div>
           <div style={{ fontSize: '1.4rem', fontWeight: 800, color: 'var(--text-primary)', letterSpacing: '-0.03em' }}>
-            {status === 'on' ? 'Running' : 'Idle'}
+            {loading ? 'Updating…' : status === 'on' ? 'Running' : 'Idle'}
           </div>
           <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>
-            {lastAction.triggeredBy === 'auto' ? '⚡ Auto' : '✋ Manual'} · {reasonLabel[lastAction.reason] ?? lastAction.reason}
+            {lastAction
+              ? `${lastAction.triggeredBy === 'auto' ? '⚡ Auto' : '✋ Manual'} · ${reasonLabel[lastAction.reason] ?? lastAction.reason}`
+              : 'No recent action'}
           </div>
         </div>
       </div>
 
-      <div className="stat-card-sub" style={{ marginBottom: 14 }}>
-        Last action: {formatTime(lastAction.createdAt)}
+      <div className="stat-card-sub" style={{ marginBottom: lastAction ? 6 : 14 }}>
+        {lastAction ? `Last action: ${formatTime(lastAction.createdAt)}` : 'No action recorded'}
       </div>
+
+      {/* Backend error feedback */}
+      {error && (
+        <div style={{
+          display: 'flex', alignItems: 'center', gap: 6, marginBottom: 10,
+          fontSize: '0.72rem', color: 'var(--high)',
+          background: 'rgba(239,68,68,0.08)', borderRadius: 8, padding: '6px 10px',
+          border: '1px solid rgba(239,68,68,0.20)',
+        }}>
+          <AlertCircle size={12} />
+          {error}
+        </div>
+      )}
 
       <Button
         variant={status === 'on' ? 'danger' : 'primary'}
-        onClick={toggle}
+        onClick={() => togglePump(status)}
+        loading={loading}
         style={{ width: '100%' }}
       >
         <RotateCcw size={13} />

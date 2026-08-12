@@ -26,18 +26,39 @@ if os.path.exists(ARTIFACT_PATH):
 
 def _rule_based_probability(req) -> float:
     """
-    Heuristic scoring mirroring the same signature used to label training
-    data: high, steady, sustained flow well above what's expected for the
-    time of day = leak-like.
+    Heuristic scoring: a LEAK is signalled by unexpected, continuous, steady
+    flow that exceeds the scheduled baseline for this hour.
+
+    Key insight: low tank_level_pct alone is a SHORTAGE signal, not a leak
+    signal. 28% tank + normal flow = low leak risk, high shortage risk.
+
+    Formula:
+      - Deviation above expected flow    → primary driver  (weight 0.55)
+      - Extreme absolute flow (>10 L/min)→ secondary signal (weight 0.25)
+      - Pct-time-flowing above 90%       → corroborating   (weight 0.20)
+      - Low tank level acts as mild negative modifier (saves from false positive)
     """
     deviation = req.mean_flow_lpm - req.expected_flow_lpm
-    steadiness = 1.0 - min(req.std_flow_lpm / max(req.mean_flow_lpm, 0.1), 1.0)
 
-    score = 0.0
-    score += np.clip(deviation / 8.0, 0, 1) * 0.5       # abnormally high vs schedule
-    score += req.pct_time_flowing * 0.3                  # continuous flow
-    score += steadiness * 0.2                             # leaks are steady, usage is bursty
-    return float(np.clip(score, 0, 1))
+    # Main signal: how far above the expected baseline are we?
+    deviation_score = float(np.clip(deviation / 8.0, 0.0, 1.0))
+
+    # Absolute flow is suspiciously high regardless of expected
+    extreme_score = float(np.clip((req.mean_flow_lpm - 10.0) / 10.0, 0.0, 1.0))
+
+    # Continuous 24/7 flow (>90% of the window) is suspicious
+    continuous_score = float(np.clip((req.pct_time_flowing - 0.90) / 0.10, 0.0, 1.0))
+
+    score = 0.55 * deviation_score + 0.25 * extreme_score + 0.20 * continuous_score
+
+    # Low tank_level_pct alone means shortage, not leak — apply mild penalty
+    # to avoid false-positive leak when the tank is simply draining normally
+    tank_level_pct = getattr(req, 'tank_level_pct', 50.0)
+    if tank_level_pct < 40 and deviation <= 1.0:
+        # Tank is low but flow isn't anomalous — dampen the score
+        score *= 0.40
+
+    return float(np.clip(score, 0.02, 0.98))
 
 
 def _reason(req, is_leak: bool) -> str:

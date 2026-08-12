@@ -2,7 +2,6 @@
 
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { api } from '@/lib/api';
-import { mockAlerts } from '@/lib/mockData';
 
 async function fetchAlerts(params = {}) {
   const { data } = await api.get('/api/alerts', { params });
@@ -20,6 +19,8 @@ export function useAlerts(filters = {}) {
   const { data, isLoading, error } = useQuery({
     queryKey: ['alerts', filters],
     queryFn:  () => fetchAlerts(filters),
+    retry: 1,
+    refetchInterval: 15 * 1000,
   });
 
   const acknowledgeMutation = useMutation({
@@ -27,12 +28,10 @@ export function useAlerts(filters = {}) {
     onSuccess: () => queryClient.invalidateQueries({ queryKey: ['alerts'] }),
   });
 
-  const alerts = data ?? (error ? mockAlerts : null);
   return {
-    alerts:      alerts ?? [],
+    alerts:      data ?? [],
     isLoading,
     error,
-    usingMock:   !data && !!error,
     acknowledge: acknowledgeMutation.mutate,
   };
 }

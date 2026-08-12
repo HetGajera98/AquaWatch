@@ -1,47 +1,85 @@
 'use client';
 
-import { Wifi, RefreshCw } from 'lucide-react';
+import { useState, useEffect } from 'react';
+import { Menu, RefreshCw, Wifi, WifiOff } from 'lucide-react';
 import { useAuth } from '@/hooks/useAuth';
+import { useDeviceLive } from '@/hooks/useDeviceLive';
 
-export function TopBar({ title }) {
+export function TopBar({ title, onMenuToggle }) {
   const { user } = useAuth();
-  const now = new Date().toLocaleString('en-IN', {
-    hour: '2-digit', minute: '2-digit',
-    day: 'numeric', month: 'short',
-  });
+  const { data } = useDeviceLive();
+  const [time, setTime] = useState('');
+  const [spinning, setSpinning] = useState(false);
+  
+  const isOnline = data?.online ?? false;
+
+  useEffect(() => {
+    function tick() {
+      setTime(
+        new Date().toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit' })
+      );
+    }
+    tick();
+    const id = setInterval(tick, 30_000);
+    return () => clearInterval(id);
+  }, []);
+
+  function handleRefresh() {
+    setSpinning(true);
+    setTimeout(() => { window.location.reload(); }, 400);
+  }
+
+  const initial = user?.email ? user.email.charAt(0).toUpperCase() : 'O';
+  const email   = user?.email ?? 'operator@aquawatch.io';
 
   return (
     <header className="topbar">
-      <span className="topbar-title">{title}</span>
+      {/* Left — hamburger + title */}
+      <div className="topbar-left">
+        <button
+          className="menu-toggle-btn"
+          onClick={onMenuToggle}
+          aria-label="Toggle menu"
+        >
+          <Menu size={19} />
+        </button>
+        <span className="topbar-title">{title}</span>
+      </div>
+
+      {/* Right — live chip · time · refresh · user */}
       <div className="topbar-right">
-        {/* Live indicator */}
-        <div style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: '0.75rem', color: 'var(--text-muted)' }}>
-          <span className="live-dot" />
-          <span>Live</span>
-          <Wifi size={13} />
+        {/* Live badge */}
+        <div className="live-badge" style={{
+          borderColor: isOnline ? 'rgba(16,185,129,0.3)' : 'rgba(239,68,68,0.3)',
+          background: isOnline ? 'rgba(16,185,129,0.1)' : 'rgba(239,68,68,0.1)'
+        }}>
+          <span className="live-dot" style={{ 
+            background: isOnline ? '#10B981' : '#ef4444',
+            boxShadow: isOnline ? '0 0 6px #10B981' : 'none'
+          }} />
+          <span style={{ color: isOnline ? '#10B981' : '#ef4444' }}>
+            {isOnline ? 'Live' : 'Offline'}
+          </span>
+          {isOnline ? <Wifi size={12} color="#10B981" /> : <WifiOff size={12} color="#ef4444" />}
         </div>
 
-        {/* Timestamp */}
-        <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>{now}</span>
+        {/* Clock */}
+        <span className="topbar-time">{time}</span>
 
         {/* Refresh */}
         <button
-          className="btn btn-ghost btn-sm"
-          style={{ gap: 5, padding: '5px 10px' }}
-          onClick={() => window.location.reload()}
+          className="refresh-btn"
+          onClick={handleRefresh}
           title="Refresh data"
+          style={spinning ? { animation: 'spin 0.4s linear' } : {}}
         >
-          <RefreshCw size={13} />
+          <RefreshCw size={15} />
         </button>
 
         {/* User chip */}
         <div className="topbar-chip">
-          <div className="avatar">
-            {user?.email ? user.email.charAt(0).toUpperCase() : 'O'}
-          </div>
-          <span style={{ maxWidth: 140, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-            {user?.email ?? 'operator@aquawatch.io'}
-          </span>
+          <div className="avatar">{initial}</div>
+          <span className="topbar-chip-text">{email}</span>
         </div>
       </div>
     </header>

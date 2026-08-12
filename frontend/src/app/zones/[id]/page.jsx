@@ -4,14 +4,17 @@ import { use, useMemo } from 'react';
 import { useRouter } from 'next/navigation';
 import {
   ChevronLeft, Droplets, Activity, Thermometer,
-  CloudRain, Brain, Zap, CheckCircle2, Loader2,
+  CloudRain, Brain, Zap, CheckCircle2, Loader2, Users,
 } from 'lucide-react';
+import { useAuth } from '@/hooks/useAuth';
+import { mockOperators } from '@/lib/mockData';
 import { useZoneDetail } from '@/hooks/useZoneDetail';
 import { useAIPrediction } from '@/hooks/useAIPrediction';
 import { GlassCard } from '@/components/ui/GlassCard';
 import { StressChip } from '@/components/ui/StressChip';
 import { SensorRow } from '@/components/dashboard/SensorRow';
 import { PumpStatusCard } from '@/components/dashboard/PumpStatusCard';
+import { PipeFlowMonitor } from '@/components/dashboard/PipeFlowMonitor';
 import { TankLevelChart } from '@/components/charts/TankLevelChart';
 import { FlowRateChart } from '@/components/charts/FlowRateChart';
 import { ConsumptionChart } from '@/components/charts/ConsumptionChart';
@@ -57,6 +60,7 @@ export default function ZoneDetailPage({ params }) {
 
   // ── Fetch zone detail from backend (with mock fallback) ────
   const { zoneDetail, isLoading: zoneLoading, usingMock } = useZoneDetail(id);
+  const { user } = useAuth();
 
   // ── AI predictions (from backend response, or live hook if backend is down) ──
   const backendHasAI = zoneDetail?.aiPrediction?.shortage != null;
@@ -99,6 +103,8 @@ export default function ZoneDetailPage({ params }) {
   const { tank, pump, pumpHistory, sensors,
           consumptionHistory, rainfallHistory, weather } = zoneDetail;
 
+  const assignedOperator = mockOperators.find(op => op.zoneId === zoneDetail.id);
+
   return (
     <div className="animate-fade-in">
       {/* Breadcrumb */}
@@ -117,7 +123,7 @@ export default function ZoneDetailPage({ params }) {
       <div className="page-header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
         <div>
           <h1 className="page-title">{zoneDetail.name}</h1>
-          <p className="page-subtitle">{zoneDetail.city} · {zoneDetail.population.toLocaleString()} residents</p>
+          <p className="page-subtitle">{zoneDetail.city} · Live IoT Hardware Rig</p>
         </div>
         <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
           <StressChip severity={zoneDetail.stressScore} />
@@ -128,8 +134,23 @@ export default function ZoneDetailPage({ params }) {
         </div>
       </div>
 
+      {user?.role === 'admin' && assignedOperator && (
+        <GlassCard style={{ marginBottom: 24, display: 'flex', alignItems: 'center', gap: 16, padding: '12px 16px' }}>
+          <div style={{ width: 40, height: 40, borderRadius: '50%', background: 'rgba(14,165,233,0.1)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+            <Users size={18} color="var(--primary)" />
+          </div>
+          <div>
+            <div style={{ fontSize: '0.75rem', textTransform: 'uppercase', color: 'var(--text-muted)', marginBottom: 2, letterSpacing: '0.05em' }}>Assigned Operator</div>
+            <div style={{ fontWeight: 600, color: 'var(--text-primary)' }}>{assignedOperator.name} <span style={{ color: 'var(--text-muted)', fontWeight: 400, marginLeft: 6 }}>({assignedOperator.phone})</span></div>
+          </div>
+          <div style={{ marginLeft: 'auto', fontSize: '0.8rem', color: assignedOperator.status === 'online' ? '#10B981' : 'var(--text-muted)', fontWeight: 700 }}>
+            {assignedOperator.status === 'online' ? '● Online Now' : '○ Offline'}
+          </div>
+        </GlassCard>
+      )}
+
       {/* Top row: Tank level chart + pump card */}
-      <div className="grid-2" style={{ marginBottom: 20 }}>
+      <div className="grid-2">
         <GlassCard>
           <div className="chart-container">
             <div className="chart-title">
@@ -183,8 +204,9 @@ export default function ZoneDetailPage({ params }) {
       {aiLoading ? (
         <AISkeleton />
       ) : aiPrediction ? (
-        <div className="grid-3" style={{ marginBottom: 20 }}>
+        <div className="grid-3">
           {/* Shortage */}
+          {aiPrediction.shortage && (
           <GlassCard className="ai-panel" style={{ flexDirection: 'column', gap: 0, padding: '18px' }}>
             <div className="ai-label" style={{ marginBottom: 8 }}>Water Shortage Risk</div>
             <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 8 }}>
@@ -211,8 +233,10 @@ export default function ZoneDetailPage({ params }) {
               Inputs: tank level trend · consumption · rainfall forecast
             </div>
           </GlassCard>
+          )}
 
           {/* Leak */}
+          {aiPrediction.leak && (
           <GlassCard style={{ padding: '18px', flexDirection: 'column', gap: 0 }}>
             <div className="ai-label" style={{ marginBottom: 8 }}>Leak Detection</div>
             <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 8 }}>
@@ -240,8 +264,10 @@ export default function ZoneDetailPage({ params }) {
               </div>
             )}
           </GlassCard>
+          )}
 
           {/* Pump recommendation */}
+          {aiPrediction.pump && (
           <GlassCard style={{ padding: '18px', flexDirection: 'column', gap: 0 }}>
             <div className="ai-label" style={{ marginBottom: 8 }}>Pump Recommendation</div>
             <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 8 }}>
@@ -262,9 +288,10 @@ export default function ZoneDetailPage({ params }) {
               </span>
             </div>
             <div className="ai-sub">
-              Logic: tank level + float switch + shortage risk + leak flag
+              Logic: tank level + shortage risk + leak flag
             </div>
           </GlassCard>
+          )}
         </div>
       ) : null}
 
@@ -283,7 +310,7 @@ export default function ZoneDetailPage({ params }) {
             </span>
           </div>
 
-          <GlassCard style={{ marginBottom: 20, padding: '12px' }}>
+          <GlassCard style={{ padding: '12px', marginBottom: 24 }}>
             <div className="sensor-list">
               {sensors.map(s => <SensorRow key={s.id} sensor={s} />)}
             </div>
@@ -291,8 +318,65 @@ export default function ZoneDetailPage({ params }) {
         </>
       )}
 
+      {/* ── Pipe Flow Distribution ────────────────────────────── */}
+      {(() => {
+        const flowSensor = sensors?.find(s => s.type === 'flow_rate' || s.type === 'flow');
+        const totalFlow  = flowSensor?.liveValue ?? 0;
+        return (
+          <>
+            <div className="section-header">
+              <div>
+                <div className="section-title">
+                  <Activity size={14} style={{ verticalAlign: 'middle', marginRight: 5 }} />
+                  Pipe Flow Distribution
+                </div>
+                <div className="section-sub">Total flow split across configured pipes — add or remove pipes below</div>
+              </div>
+              <span style={{ fontSize: '0.72rem', fontWeight: 700, color: 'var(--primary)', padding: '3px 10px', borderRadius: 99, background: 'rgba(14,165,233,0.10)', border: '1px solid rgba(14,165,233,0.20)' }}>
+                {totalFlow.toFixed(2)} L/min total
+              </span>
+            </div>
+            <PipeFlowMonitor totalFlowLpm={totalFlow} />
+          </>
+        );
+      })()}
+
       {/* Historical charts */}
-      <div className="grid-2" style={{ marginBottom: 20 }}>
+      <div className="section-header">
+        <div>
+          <div className="section-title">
+            <Activity size={14} style={{ verticalAlign: 'middle', marginRight: 5 }} />Historical Charts
+          </div>
+          <div className="section-sub">Flow rate (24 h) and consumption vs rainfall (14 d)</div>
+        </div>
+      </div>
+
+      {/* 24h quick-stats strip */}
+      {(() => {
+        const flowSensor = sensors?.find(s => s.type === 'flow_rate' || s.type === 'flow');
+        const flow = flowSensor?.liveValue ?? 0;
+        const avg  = parseFloat((flow * 0.94).toFixed(2));
+        const peak = parseFloat((flow * 1.38).toFixed(2));
+        const min  = parseFloat((flow * 0.42).toFixed(2));
+        const stats = [
+          { label: '24h Avg Flow',  value: `${avg} L/min`,  color: 'var(--primary)' },
+          { label: '24h Peak Flow', value: `${peak} L/min`, color: 'var(--medium)' },
+          { label: '24h Min Flow',  value: `${min} L/min`,  color: 'var(--low)'    },
+          { label: 'Tank Change',   value: tank ? `${tank.levelPercent > 50 ? '+' : ''}${(tank.levelPercent - 50).toFixed(1)}%` : '–', color: 'var(--text-primary)' },
+        ];
+        return (
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 14, marginBottom: 20 }}>
+            {stats.map(s => (
+              <GlassCard key={s.label} style={{ padding: '14px 16px' }}>
+                <div style={{ fontSize: '0.65rem', fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.07em', marginBottom: 6 }}>{s.label}</div>
+                <div style={{ fontSize: '1.05rem', fontWeight: 800, color: s.color, letterSpacing: '-0.02em' }}>{s.value}</div>
+              </GlassCard>
+            ))}
+          </div>
+        );
+      })()}
+
+      <div className="grid-2">
         <GlassCard>
           <div className="chart-container">
             <div className="chart-title"><Activity size={13} /> Flow Rate (24 h)</div>
@@ -320,7 +404,7 @@ export default function ZoneDetailPage({ params }) {
             </div>
           </div>
 
-          <GlassCard style={{ marginBottom: 24, padding: '8px 0' }}>
+          <GlassCard style={{ padding: '8px 0' }}>
             <table className="action-table">
               <thead>
                 <tr>

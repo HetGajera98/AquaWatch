@@ -1,20 +1,23 @@
 'use client';
 
 import { useRouter } from 'next/navigation';
-import { Map, ChevronRight } from 'lucide-react';
+import { Zap, Map, ChevronRight } from 'lucide-react';
+import { useAuth } from '@/hooks/useAuth';
 import { useZones } from '@/hooks/useZones';
 import { GlassCard } from '@/components/ui/GlassCard';
 import { StressChip } from '@/components/ui/StressChip';
 
 export default function ZonesPage() {
   const router = useRouter();
+  const { user } = useAuth();
+  const isAdmin = user?.role === 'admin';
   const { zones, isLoading } = useZones();
 
   return (
     <div className="animate-fade-in">
       <div className="page-header">
-        <h1 className="page-title">All Zones</h1>
-        <p className="page-subtitle">{zones.length} monitored zones</p>
+        <h1 className="page-title">{isAdmin ? 'All Zones' : 'Motor Stations'}</h1>
+        <p className="page-subtitle">{zones.length} active {isAdmin ? 'zone' : 'motor station'}{zones.length !== 1 ? 's' : ''} — click to inspect live telemetry</p>
       </div>
 
       <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
@@ -39,14 +42,14 @@ export default function ZonesPage() {
                   background: 'rgba(14,165,233,0.10)',
                   display: 'flex', alignItems: 'center', justifyContent: 'center',
                 }}>
-                  <Map size={18} color="var(--primary)" />
+                  {isAdmin ? <Map size={18} color="var(--primary)" /> : <Zap size={18} color="var(--primary)" />}
                 </div>
                 <div style={{ flex: 1 }}>
                   <div style={{ fontWeight: 700, color: 'var(--text-primary)', marginBottom: 2 }}>
                     {zone.name}
                   </div>
                   <div style={{ fontSize: '0.78rem', color: 'var(--text-muted)' }}>
-                    {zone.city} · {zone.population?.toLocaleString() ?? '–'} residents
+                    Tank: {zone.tankLevel?.toFixed(0) ?? '–'}% · Flow: {zone.flowRate?.toFixed(1) ?? '–'} L/min
                   </div>
                 </div>
                 <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>

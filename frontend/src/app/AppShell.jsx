@@ -4,6 +4,7 @@ import { useState, useEffect } from 'react';
 import { usePathname, useRouter } from 'next/navigation';
 import { Sidebar } from '@/components/layout/Sidebar';
 import { TopBar } from '@/components/layout/TopBar';
+import { BottomNav } from '@/components/layout/BottomNav';
 import { AlertBanner } from '@/components/ui/AlertBanner';
 import { useAlerts } from '@/hooks/useAlerts';
 import { useAuth } from '@/hooks/useAuth';
@@ -13,6 +14,7 @@ const PAGE_TITLES = {
   '/zones':     'Zones',
   '/alerts':    'Alerts',
   '/settings':  'Settings',
+  '/devices':   'Live Devices',
 };
 
 function resolveTitle(pathname) {
@@ -21,30 +23,49 @@ function resolveTitle(pathname) {
   return PAGE_TITLES[pathname] ?? 'AquaWatch';
 }
 
+// Ambient Background liquid orbs
+function AmbientBackground() {
+  return (
+    <div className="ambient-bg">
+      <div className="liquid-orb orb-1" />
+      <div className="liquid-orb orb-2" />
+      <div className="liquid-orb orb-3" />
+    </div>
+  );
+}
+
 // Separate component so useAlerts only runs when user is logged in
 function ShellWithAlerts({ children, pathname }) {
   const { alerts } = useAlerts();
   const [bannerDismissed, setBannerDismissed] = useState(false);
+  const [sidebarOpen, setSidebarOpen] = useState(false);
 
   const highAlerts = alerts.filter(a => a.severity === 'high' && !a.acknowledged);
   const showBanner = !bannerDismissed && highAlerts.length > 0;
 
   return (
-    <div className="app-shell">
-      <Sidebar />
-      <div className="main-area">
-        <TopBar title={resolveTitle(pathname)} />
-        {showBanner && (
-          <AlertBanner
-            alerts={alerts}
-            onDismiss={() => setBannerDismissed(true)}
+    <>
+      <AmbientBackground />
+      <div className="app-shell">
+        <Sidebar isOpen={sidebarOpen} onClose={() => setSidebarOpen(false)} />
+        <div className="main-area">
+          <TopBar
+            title={resolveTitle(pathname)}
+            onMenuToggle={() => setSidebarOpen(prev => !prev)}
           />
-        )}
-        <main className="page-content">
-          {children}
-        </main>
+          {showBanner && (
+            <AlertBanner
+              alerts={alerts}
+              onDismiss={() => setBannerDismissed(true)}
+            />
+          )}
+          <main className="page-content">
+            {children}
+          </main>
+        </div>
+        <BottomNav />
       </div>
-    </div>
+    </>
   );
 }
 
@@ -67,7 +88,12 @@ export function AppShell({ children }) {
   }, [isMounted, user, isLoginPage, router]);
 
   if (isLoginPage) {
-    return <>{children}</>;
+    return (
+      <>
+        <AmbientBackground />
+        {children}
+      </>
+    );
   }
 
   // Don't render the shell (and trigger API calls) until we know user is present
@@ -77,3 +103,4 @@ export function AppShell({ children }) {
 
   return <ShellWithAlerts pathname={pathname}>{children}</ShellWithAlerts>;
 }
+

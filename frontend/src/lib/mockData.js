@@ -44,7 +44,7 @@ export const mockZones = [
     tankLevelHistory: genLevelHistory(28),
     flowRate: 12.3,
     floatSwitch: 'empty',
-    leakProbability: 0.71,
+    leakProbability: 0.12,
     stressScore: 'high',
     pumpStatus: 'on',
   },
@@ -86,6 +86,61 @@ export const mockZones = [
     leakProbability: 0.09,
     stressScore: 'low',
     pumpStatus: 'off',
+  },
+];
+// ─────────────────────────────────────────────
+// OPERATORS (for Admin view)
+// ─────────────────────────────────────────────
+export const mockOperators = [
+  {
+    id: 'op-demo',
+    name: 'Demo Operator',
+    email: 'operator@aquawatch.io',
+    phone: '+91 98765 00000',
+    zoneId: 'zone-ahm-north',
+    zoneName: 'Ahmedabad North',
+    status: 'online',
+    lastActive: 'Just now',
+  },
+  {
+    id: 'op-01',
+    name: 'Rahul Sharma',
+    email: 'rahul.s@aquawatch.io',
+    phone: '+91 98765 43210',
+    zoneId: 'zone-ahm-north',
+    zoneName: 'Ahmedabad North',
+    status: 'online',
+    lastActive: 'Just now',
+  },
+  {
+    id: 'op-02',
+    name: 'Priya Patel',
+    email: 'priya.p@aquawatch.io',
+    phone: '+91 98765 43211',
+    zoneId: 'zone-srt-west',
+    zoneName: 'Surat West',
+    status: 'online',
+    lastActive: '5m ago',
+  },
+  {
+    id: 'op-03',
+    name: 'Amit Kumar',
+    email: 'amit.k@aquawatch.io',
+    phone: '+91 98765 43212',
+    zoneId: 'zone-rjk-central',
+    zoneName: 'Rajkot Central',
+    status: 'offline',
+    lastActive: '2h ago',
+  },
+  {
+    id: 'op-04',
+    name: 'Neha Desai',
+    email: 'neha.d@aquawatch.io',
+    phone: '+91 98765 43213',
+    zoneId: 'zone-vdr-south',
+    zoneName: 'Vadodara South',
+    status: 'online',
+    lastActive: '1m ago',
   },
 ];
 
@@ -201,7 +256,7 @@ const ZONE_DETAILS = {
     // Static fallback AI prediction (overridden by live call when AI is up)
     aiPrediction: {
       shortage: { severity: 'high', confidence: 0.95, stressScore: 87 },
-      leak: { leakProbability: 0.71, isLeak: true, sensorId: 'sns-ahm-flow-1', reason: 'Night-time continuous flow with no demand' },
+      leak: { leakProbability: 0.12, isLeak: false, sensorId: 'sns-ahm-flow-1', reason: 'Flow within expected range' },
       pump: { action: 'on', reason: 'tank_critical' },
     },
   },
