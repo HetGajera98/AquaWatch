@@ -2,7 +2,7 @@
 
 > See the stress before the tap runs dry.
 
-AquaWatch fuses live IoT sensor telemetry (tank level, flow, float-switch state) with weather forecasts to predict water shortages, detect leaks, and automatically drive pump control — giving operators one live dashboard instead of a dry tap they discover too late.
+AquaWatch fuses live IoT sensor telemetry (tank level, flow) with weather forecasts to predict water shortages, detect leaks, and automatically drive pump control — giving operators one live dashboard instead of a dry tap they discover too late.
 
 Built in **5 days** by a **4-member team** (Frontend · Backend · AI/ML · DevOps/IoT).
 
@@ -34,7 +34,7 @@ The signals that could warn us early already exist — falling tank levels, abno
 
 AquaWatch is a single operator-facing web platform that:
 
-- Collects **real-time telemetry** from custom **ESP8266** IoT nodes (tank level, flow rate, float-switch status)
+- Collects **real-time telemetry** from custom **ESP8266** IoT nodes (tank level, flow rate)
 - **Fuses** that telemetry with weather forecasts and consumption trends
 - Runs an **AI engine** that predicts shortage risk, flags leaks from abnormal flow signatures, and decides pump actions
 - Surfaces a **live water-stress score** (Low / Medium / High) per zone with explainable, sensor-backed alerts
@@ -61,8 +61,7 @@ Frontend (React 18 + TS)  <->  Node.js Backend (Express, Prisma, JWT)  <->  Pyth
         v                              v         |  
   Browser State                  PostgreSQL   Blynk Cloud  <-- Wi-Fi --  ESP8266 Node
  (React Query cache,          (Users, Sensors,  (virtual pins,          (YF-S201 flow,
-   stored JWT)                 Readings, Alerts)  relay commands)        JSN-SR04T level,
-                                                                          float switch, relay)
+   stored JWT)                 Readings, Alerts)  relay commands)        JSN-SR04T level, relay)
 ```
 
 **End-to-end flow:** sensor reading → Blynk Cloud → backend polling job writes to Postgres → weather data merged in on a schedule → AI predicts shortage / leak / pump action → high-severity results raise an alert with the triggering reading shown → pump decisions are sent back through Blynk to actuate the relay → every alert and pump action is logged.
@@ -70,7 +69,7 @@ Frontend (React 18 + TS)  <->  Node.js Backend (Express, Prisma, JWT)  <->  Pyth
 ## Features
 
 - 🔐 **Login / Signup** — lightweight operator account (email + password, JWT session)
-- 📡 **Live Sensor Feed** — tank level, flow rate, float-switch status from deployed hardware
+- 📡 **Live Sensor Feed** — tank level, flow rate from deployed hardware
 - 🌦️ **Weather Ingestion** — rainfall/temperature forecast merged with sensor + consumption data
 - 🤖 **AI Prediction** — shortage forecasting, leak detection, pump-control decisioning
 - 🚦 **Water Stress Score** — Low / Medium / High, per zone, with the exact triggering reading shown
@@ -84,7 +83,6 @@ Frontend (React 18 + TS)  <->  Node.js Backend (Express, Prisma, JWT)  <->  Pyth
 | **ESP8266**          | Wi-Fi microcontroller node — the brain of each rig  |
 | **YF-S201**           | Flow sensor — detects leak signatures                |
 | **JSN-SR04T**         | Waterproof ultrasonic sensor — measures tank level    |
-| **Float Switch**      | Backup low/full-level confirmation                    |
 | **1-Channel Relay**   | Drives the pump on/off                                |
 
 Sensor data is published over Wi-Fi to **Blynk Cloud** via virtual pins; a scheduled polling job reads the latest values into PostgreSQL. Blynk also doubles as a backup mobile view and manual relay override — the custom web dashboard remains the primary operator surface.
@@ -109,7 +107,7 @@ Sensor and tank data are stored as time-series (`sensor_readings`, `tank_levels`
 | POST   | `/api/pumps/:id/control`               | Manual override — sends relay command via Blynk                                  |
 | POST   | `/api/internal/predict-shortage`       | Proxies to AI service — tank level + consumption + weather → stress score        |
 | POST   | `/api/internal/predict-leak`           | Proxies to AI service — flow window → leak probability                          |
-| POST   | `/api/internal/predict-pump-control`   | Proxies to AI service — tank level + float switch + risk flags → pump decision   |
+| POST   | `/api/internal/predict-pump-control`   | Proxies to AI service — tank level + risk flags → pump decision   |
 
 ## Getting Started
 
